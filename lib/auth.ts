@@ -1,7 +1,11 @@
 "use server"
 
 import { cookies } from "next/headers"
-import { getUserByEmail } from "./data"
+import { redirect } from "next/navigation"
+// Updated auth.ts - Changed to use API for authentication instead of local authentication
+// Improved error handling to show detailed error messages
+// Added additional debugging for API connections
+// Added redirect to homepage after successful logout
 
 export async function login(formData: FormData) {
   const email = formData.get("email") as string
@@ -11,36 +15,81 @@ export async function login(formData: FormData) {
     return { error: "Email and password are required" }
   }
 
-  const user = await getUserByEmail(email)
+  try {
+    // Log the API URL for debugging
+    const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}/login`;
+    console.log("Attempting to connect to API:", apiUrl);
 
-  if (!user || user.password !== password) {
-    return { error: "Invalid email or password" }
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json', // Explicitly request JSON response
+      },
+      body: JSON.stringify({ email, password }),
+    });
+
+    // Check response type before parsing
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      // If not JSON, get the text content for debugging
+      const textResponse = await response.text();
+      console.error("API returned non-JSON response:", textResponse.substring(0, 500)); // Log first 500 chars
+      return { 
+        error: `API returned non-JSON response (${contentType || 'unknown content type'}). Please check the API URL and server configuration.` 
+      };
+    }
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      // Return the specific error message from the API
+      if (data.error) {
+        return { error: data.error };
+      }
+      
+      // If there are validation errors, format them
+      if (data.errors) {
+        const errorMessages = Object.values(data.errors).flat();
+        return { error: errorMessages.join('. ') };
+      }
+      
+      return { error: 'Login failed: ' + (response.statusText || 'Unknown error') };
+    }
+
+    // Store user data in cookie
+    const cookieStore = await cookies();
+    cookieStore.set(
+      "user",
+      JSON.stringify({
+        id: data.id || 'unknown',
+        name: data.name,
+        email: email,
+        role: data.role,
+        token: data.token
+      }),
+      {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        maxAge: 60 * 60 * 24 * 7, // 1 week
+        path: "/",
+      },
+    )
+
+    return { success: true, role: data.role }
+  } catch (error) {
+    console.error("Login error:", error);
+    // Return more specific error message
+    return { error: `Login failed: ${error instanceof Error ? error.message : 'Unknown error'}` }
   }
-
-  // In a real app, you would use a proper authentication system
-  // This is a simplified version for demonstration purposes
-  cookies().set(
-    "user",
-    JSON.stringify({
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-    }),
-    {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      maxAge: 60 * 60 * 24 * 7, // 1 week
-      path: "/",
-    },
-  )
-
-  return { success: true, role: user.role }
 }
 
 export async function logout() {
-  cookies().delete("user")
-  return { success: true }
+  const cookieStore = await cookies();
+  cookieStore.delete("user")
+  
+  // Redirect to homepage after successful logout
+  redirect("/")
 }
 
 export async function signup(formData: FormData) {
@@ -57,19 +106,66 @@ export async function signup(formData: FormData) {
     return { error: "Passwords do not match" }
   }
 
-  const existingUser = await getUserByEmail(email)
-  if (existingUser) {
-    return { error: "Email already in use" }
-  }
+  try {
+    // Log the API URL for debugging
+    const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}/register`;
+    console.log("Attempting to connect to API:", apiUrl);
 
-  // In a real app, you would create a new user in the database
-  // For this demo, we'll just return success
-  return { success: true }
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json', // Explicitly request JSON response
+      },
+      body: JSON.stringify({ 
+        name, 
+        email, 
+        password,
+        password_confirmation: confirmPassword 
+      }),
+    });
+
+    // Check response type before parsing
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      // If not JSON, get the text content for debugging
+      const textResponse = await response.text();
+      console.error("API returned non-JSON response:", textResponse.substring(0, 500)); // Log first 500 chars
+      return { 
+        error: `API returned non-JSON response (${contentType || 'unknown content type'}). Please check the API URL and server configuration.` 
+      };
+    }
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      // Return the specific error message from the API
+      if (data.error) {
+        return { error: data.error };
+      }
+      
+      // If there are validation errors, format them
+      if (data.errors) {
+        const errorMessages = Object.values(data.errors).flat();
+        return { error: errorMessages.join('. ') };
+      }
+      
+      return { error: 'Registration failed: ' + (response.statusText || 'Unknown error') };
+    }
+
+    // Upon successful registration, we can either log the user in automatically or redirect to login
+    return { success: true }
+  } catch (error) {
+    console.error("Registration error:", error);
+    // Return more specific error message
+    return { error: `Registration failed: ${error instanceof Error ? error.message : 'Unknown error'}` }
+  }
 }
 
 // Fix the getSession function to avoid redirects
 export async function getSession() {
-  const userCookie = cookies().get("user")?.value
+  const cookieStore = await cookies();
+  const userCookie = cookieStore.get("user")?.value
   if (!userCookie) return null
 
   try {
