@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { BookOpen, Menu } from "lucide-react"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
+import { LogoutButton } from "@/components/logout-button"
 
 export async function SiteHeader() {
   const session = await getSession()
@@ -37,11 +38,7 @@ export async function SiteHeader() {
                     <Link href="/admin">Admin</Link>
                   </Button>
                 )}
-                <form action="/api/logout" method="POST">
-                  <Button variant="outline" size="sm" type="submit">
-                    Logout
-                  </Button>
-                </form>
+                <LogoutButton size="sm" />
               </div>
             ) : (
               <div className="flex items-center gap-2">
@@ -96,11 +93,7 @@ export async function SiteHeader() {
                           <Link href="/admin">Admin Dashboard</Link>
                         </Button>
                       )}
-                      <form action="/api/logout" method="POST">
-                        <Button variant="outline" type="submit" className="w-full">
-                          Logout
-                        </Button>
-                      </form>
+                      <LogoutButton variant="outline" fullWidth />
                     </div>
                   ) : (
                     <div className="flex flex-col gap-3">

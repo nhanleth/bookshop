@@ -28,12 +28,9 @@ export default function LoginPage() {
     if (result.error) {
       setError(result.error)
       setIsLoading(false)
-    } else {
-      if (result.role === "admin") {
-        router.push("/admin")
-      } else {
-        router.push("/")
-      }
+    } else if (result.success) {
+      // Navigate to the redirect path if provided, otherwise default to home
+      router.push(result.redirect || "/")
     }
   }
 

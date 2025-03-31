@@ -14,6 +14,25 @@ export function middleware(request: NextRequest) {
     return response
   }
 
+  // Get the token from the cookies
+  const token = request.cookies.get("user_token")?.value
+  const userRole = request.cookies.get("user_role")?.value
+
+  // Handle admin routes
+  if (request.nextUrl.pathname.startsWith("/admin")) {
+    // If no token or not admin role, redirect to login
+    if (!token || userRole !== "admin") {
+      return NextResponse.redirect(new URL("/login", request.url))
+    }
+  }
+
+  // Handle authentication for protected routes
+  // Add any other routes that require authentication here
+  // const protectedRoutes = ['/profile', '/account']
+  // if (protectedRoutes.some(route => request.nextUrl.pathname.startsWith(route)) && !token) {
+  //   return NextResponse.redirect(new URL('/login', request.url))
+  // }
+
   return NextResponse.next()
 }
 
