@@ -18,20 +18,20 @@ export function WishlistButton({ book }: WishlistButtonProps) {
   // Handle hydration mismatch
   useEffect(() => {
     setMounted(true)
-    setInWishlist(isInWishlist(book.id))
+    setInWishlist(isInWishlist(String(book.id)))
   }, [book.id, isInWishlist])
 
   const handleToggleWishlist = () => {
     if (inWishlist) {
-      removeFromWishlist(book.id)
+      removeFromWishlist(String(book.id))
       setInWishlist(false)
     } else {
       addToWishlist({
-        id: book.id,
-        title: book.title,
-        author: book.author,
-        price: book.price,
-        imageUrl: book.imageUrl,
+        id: String(book.id),
+        title: book.title || book.name || "Untitled Book",
+        author: book.author || "Unknown Author",
+        price: typeof book.price === 'number' ? book.price : 0,
+        imageUrl: book.imageUrl || book.image || book.thumbnail || "",
       })
       setInWishlist(true)
     }

@@ -8,19 +8,29 @@ export type User = {
 }
 
 export type Book = {
-  id: string
-  title: string
-  author: string
-  description: string
-  price: number
-  imageUrl: string
-  category: string
-  stock: number
-  isbn: string
-  publishedDate: Date
-  createdAt: Date
-  updatedAt: Date
-  categories?: string[] // Add this field for multiple categories
+  id: string | number
+  name?: string // API might use 'name' instead of 'title'
+  title?: string
+  author?: string
+  description?: string
+  detail?: string // API might use 'detail' instead of 'description'
+  price?: number
+  imageUrl?: string
+  image?: string // API might use 'image' instead of 'imageUrl'
+  thumbnail?: string // API might use 'thumbnail'
+  category?: string
+  category_name?: string // Name of the category
+  category_id?: number // API might use 'category_id'
+  stock?: number
+  quantity?: number // API might use 'quantity' instead of 'stock'
+  isbn?: string
+  publish_year?: number | string // Year published from API
+  publishedDate?: Date
+  created_at?: string // API timestamp format
+  updated_at?: string // API timestamp format
+  createdAt?: Date
+  updatedAt?: Date
+  categories?: string[] // For multiple categories
 }
 
 export type Order = {
@@ -64,12 +74,16 @@ export type Cart = {
   total: number
 }
 
-// Add new types for the new entities
+// Updated Category type to include image field
 export type Category = {
-  id: string
+  id: string | number
   name: string
-  createdAt: Date
-  updatedAt: Date
+  description?: string
+  image?: string
+  created_at?: string // API timestamp format
+  updated_at?: string // API timestamp format
+  createdAt?: Date
+  updatedAt?: Date
 }
 
 export type Payment = {

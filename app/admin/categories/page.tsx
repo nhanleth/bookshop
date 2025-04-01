@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { getAllCategories } from "@/lib/data"
 import { Button } from "@/components/ui/button"
 import { Pencil, Trash2, Plus } from "lucide-react"
 import {
@@ -27,65 +26,235 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
+import { useRouter } from "next/navigation"
+
+// Define Category type
+type Category = {
+  id: string
+  name: string
+  createdAt: string
+  updatedAt: string
+}
 
 export default function AdminCategoriesPage() {
-  const [categories, setCategories] = useState([])
+  const [categories, setCategories] = useState<Category[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [editingCategory, setEditingCategory] = useState(null)
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null)
   const [newCategory, setNewCategory] = useState({
     name: "",
   })
+  const router = useRouter()
+  
+  // Dialog open/close states
+  const [addDialogOpen, setAddDialogOpen] = useState(false)
+  const [editDialogOpen, setEditDialogOpen] = useState(false)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState<string | null>(null)
+
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || ""
 
   useEffect(() => {
-    async function loadCategories() {
-      try {
-        const data = await getAllCategories()
-        setCategories(data)
-      } catch (error) {
-        console.error("Error loading categories:", error)
-      } finally {
-        setIsLoading(false)
-      }
-    }
-
     loadCategories()
   }, [])
 
-  const handleEditCategory = (category) => {
+  async function loadCategories() {
+    try {
+      // First, get the session data from server
+      const sessionResponse = await fetch('/api/auth/session')
+      
+      if (!sessionResponse.ok) {
+        if (sessionResponse.status === 401) {
+          toast.error("You must be logged in to access this page")
+          router.push("/login")
+          return
+        }
+        throw new Error(`Session error: ${sessionResponse.status}`)
+      }
+      
+      const session = await sessionResponse.json()
+      
+      if (!session || !session.token) {
+        toast.error("Authentication token is missing")
+        router.push("/login")
+        return
+      }
+      
+      // Now fetch categories with the token
+      const response = await fetch(`${apiUrl}/categories`, {
+        headers: {
+          'Authorization': `Bearer ${session.token}`,
+          'Accept': 'application/json',
+        }
+      })
+      
+      if (!response.ok) {
+        if (response.status === 401) {
+          toast.error("Session expired. Please login again")
+          router.push("/login")
+          return
+        }
+        throw new Error(`Error: ${response.status}`)
+      }
+      
+      const data = await response.json()
+      setCategories(data)
+    } catch (error) {
+      console.error("Error loading categories:", error)
+      toast.error("Failed to load categories")
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleEditCategory = (category: Category) => {
     setEditingCategory({
       ...category,
     })
+    setEditDialogOpen(true)
   }
 
-  const handleUpdateCategory = () => {
-    // In a real app, this would call an API endpoint
-    setCategories(categories.map((category) => (category.id === editingCategory.id ? editingCategory : category)))
-    toast.success(`Category ${editingCategory.name} updated successfully`)
-    setEditingCategory(null)
+  const handleUpdateCategory = async () => {
+    if (!editingCategory) return
+
+    try {
+      // Get current session first
+      const sessionResponse = await fetch('/api/auth/session')
+      if (!sessionResponse.ok) {
+        toast.error("Authentication error")
+        router.push("/login")
+        return
+      }
+      
+      const session = await sessionResponse.json()
+      if (!session || !session.token) {
+        toast.error("Authentication token is missing")
+        router.push("/login")
+        return
+      }
+
+      const response = await fetch(`${apiUrl}/categories/${editingCategory.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': `Bearer ${session.token}`,
+        },
+        body: JSON.stringify({ name: editingCategory.name }),
+      })
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          toast.error("Session expired. Please login again")
+          router.push("/login")
+          return
+        }
+        throw new Error(`Error: ${response.status}`)
+      }
+
+      const updatedCategory = await response.json()
+      setCategories(categories.map((category) => 
+        category.id === updatedCategory.id ? updatedCategory : category
+      ))
+      
+      toast.success(`Category ${updatedCategory.name} updated successfully`)
+      setEditingCategory(null)
+      setEditDialogOpen(false) // Close the dialog
+    } catch (error) {
+      console.error("Error updating category:", error)
+      toast.error("Failed to update category")
+    }
   }
 
-  const handleDeleteCategory = (categoryId) => {
-    // In a real app, this would call an API endpoint
-    setCategories(categories.filter((category) => category.id !== categoryId))
-    toast.success("Category deleted successfully")
+  const handleDeleteCategory = async (categoryId: string) => {
+    try {
+      // Get current session first
+      const sessionResponse = await fetch('/api/auth/session')
+      if (!sessionResponse.ok) {
+        toast.error("Authentication error")
+        router.push("/login")
+        return
+      }
+      
+      const session = await sessionResponse.json()
+      if (!session || !session.token) {
+        toast.error("Authentication token is missing")
+        router.push("/login")
+        return
+      }
+      
+      const response = await fetch(`${apiUrl}/categories/${categoryId}`, {
+        method: 'DELETE',
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': `Bearer ${session.token}`,
+        }
+      })
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          toast.error("Session expired. Please login again")
+          router.push("/login")
+          return
+        }
+        throw new Error(`Error: ${response.status}`)
+      }
+
+      setCategories(categories.filter((category) => category.id !== categoryId))
+      toast.success("Category deleted successfully")
+      setDeleteDialogOpen(null) // Close the delete dialog
+    } catch (error) {
+      console.error("Error deleting category:", error)
+      toast.error("Failed to delete category")
+    }
   }
 
-  const handleAddCategory = () => {
-    // In a real app, this would call an API endpoint
-    const id = (categories.length + 1).toString()
-    setCategories([
-      ...categories,
-      {
-        ...newCategory,
-        id,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-    ])
-    setNewCategory({
-      name: "",
-    })
-    toast.success("Category added successfully")
+  const handleAddCategory = async () => {
+    try {
+      // Get current session first
+      const sessionResponse = await fetch('/api/auth/session')
+      if (!sessionResponse.ok) {
+        toast.error("Authentication error")
+        router.push("/login")
+        return
+      }
+      
+      const session = await sessionResponse.json()
+      if (!session || !session.token) {
+        toast.error("Authentication token is missing")
+        router.push("/login")
+        return
+      }
+      
+      const response = await fetch(`${apiUrl}/categories`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': `Bearer ${session.token}`,
+        },
+        body: JSON.stringify(newCategory),
+      })
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          toast.error("Session expired. Please login again")
+          router.push("/login")
+          return
+        }
+        throw new Error(`Error: ${response.status}`)
+      }
+
+      const createdCategory = await response.json()
+      setCategories([...categories, createdCategory])
+      
+      setNewCategory({
+        name: "",
+      })
+      toast.success("Category added successfully")
+      setAddDialogOpen(false) // Close the add dialog
+    } catch (error) {
+      console.error("Error adding category:", error)
+      toast.error("Failed to add category")
+    }
   }
 
   if (isLoading) {
@@ -110,7 +279,7 @@ export default function AdminCategoriesPage() {
           <p className="text-muted-foreground">Manage product categories</p>
         </div>
 
-        <Dialog>
+        <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
           <DialogTrigger asChild>
             <Button>
               <Plus className="mr-2 h-4 w-4" />
@@ -160,7 +329,7 @@ export default function AdminCategoriesPage() {
                   <td className="px-4 py-3 text-sm">{new Date(category.createdAt).toLocaleDateString()}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
-                      <Dialog>
+                      <Dialog open={editDialogOpen && editingCategory?.id === category.id} onOpenChange={setEditDialogOpen}>
                         <DialogTrigger asChild>
                           <Button variant="ghost" size="icon" onClick={() => handleEditCategory(category)}>
                             <Pencil className="h-4 w-4" />
@@ -190,7 +359,7 @@ export default function AdminCategoriesPage() {
                         </DialogContent>
                       </Dialog>
 
-                      <AlertDialog>
+                      <AlertDialog open={deleteDialogOpen === category.id} onOpenChange={(open) => setDeleteDialogOpen(open ? category.id : null)}>
                         <AlertDialogTrigger asChild>
                           <Button variant="ghost" size="icon" className="text-destructive">
                             <Trash2 className="h-4 w-4" />

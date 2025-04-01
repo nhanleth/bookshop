@@ -1,319 +1,17 @@
+/**
+ * Data access layer for BookStore application
+ * 
+ * Recent changes:
+ * - Fixed product data handling to correctly process nested API response structures
+ * - Improved image URL path handling to ensure correct URL format
+ * - Enhanced category and product data adaptors to handle varied API formats
+ * - Added better error handling and fallbacks for missing data
+ */
+
 import type { Book, User, Order, Category, Payment, ChatbotLog, WishlistItem } from "./db-schema"
 
 // Mock data for development
-export const books: Book[] = [
-  {
-    id: "1",
-    title: "The Great Gatsby",
-    author: "F. Scott Fitzgerald",
-    description: "A classic novel about the American Dream set in the Jazz Age.",
-    price: 12.99,
-    imageUrl: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/1.jpg-os5PzbaggPK4crsMnGJ6SOwghYxEE5.jpeg",
-    category: "Fiction",
-    stock: 25,
-    isbn: "9780743273565",
-    publishedDate: new Date("1925-04-10"),
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-  {
-    id: "2",
-    title: "To Kill a Mockingbird",
-    author: "Harper Lee",
-    description: "A powerful story of growing up in a town steeped in prejudice.",
-    price: 14.99,
-    imageUrl: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/2.jpg-YhCjqbIOFinkBmx0R860ePK1giZBMb.jpeg",
-    category: "Fiction",
-    stock: 18,
-    isbn: "9780061120084",
-    publishedDate: new Date("1960-07-11"),
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-  {
-    id: "3",
-    title: "Sapiens: A Brief History of Humankind",
-    author: "Yuval Noah Harari",
-    description: "A groundbreaking narrative of humanity's creation and evolution.",
-    price: 19.99,
-    imageUrl: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/3.jpg-Jf27Xub7xLBaZzc2LUXk2nxivKMuxm.jpeg",
-    category: "Non-Fiction",
-    stock: 30,
-    isbn: "9780062316097",
-    publishedDate: new Date("2014-02-10"),
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-  {
-    id: "4",
-    title: "The Hobbit",
-    author: "J.R.R. Tolkien",
-    description: "A fantasy novel about the adventures of hobbit Bilbo Baggins.",
-    price: 15.99,
-    imageUrl: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/4.jpg-CI0lZULnTkd3cFeEVAYwCBD9HjZnUL.jpeg",
-    category: "Fantasy",
-    stock: 22,
-    isbn: "9780547928227",
-    publishedDate: new Date("1937-09-21"),
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-  {
-    id: "5",
-    title: "Educated",
-    author: "Tara Westover",
-    description: "A memoir about a woman who leaves her survivalist family and goes on to earn a PhD.",
-    price: 16.99,
-    imageUrl: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/5.jpg-UvTujkavSjSRhhWCNE0lzppLTRE75h.jpeg",
-    category: "Memoir",
-    stock: 15,
-    isbn: "9780399590504",
-    publishedDate: new Date("2018-02-20"),
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-  {
-    id: "6",
-    title: "The Silent Patient",
-    author: "Alex Michaelides",
-    description: "A psychological thriller about a woman who shoots her husband and then stops speaking.",
-    price: 13.99,
-    imageUrl: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/6.jpg-k8QQmuByi1zckcebQk9x0dlf9AVBSC.jpeg",
-    category: "Thriller",
-    stock: 20,
-    isbn: "9781250301697",
-    publishedDate: new Date("2019-02-05"),
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-  // New Fiction Books
-  {
-    id: "7",
-    title: "One Hundred Years of Solitude",
-    author: "Gabriel García Márquez",
-    description:
-      "A landmark novel that tells the multi-generational story of the Buendía family in the fictional town of Macondo.",
-    price: 14.95,
-    imageUrl: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/7.jpg-CNgxB4Q9HMX5pCUzX1vdjJ6TYfk5IX.jpeg",
-    category: "Fiction",
-    stock: 18,
-    isbn: "9780060883287",
-    publishedDate: new Date("1967-05-30"),
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-  {
-    id: "8",
-    title: "The Alchemist",
-    author: "Paulo Coelho",
-    description:
-      "A philosophical novel about a young Andalusian shepherd who dreams of finding a worldly treasure and embarks on a journey of self-discovery.",
-    price: 11.99,
-    imageUrl: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/8.jpg-oVjnYDRMOq0F24fI5x9Cesgy7J3Nfp.jpeg",
-    category: "Fiction",
-    stock: 32,
-    isbn: "9780062315007",
-    publishedDate: new Date("1988-06-01"),
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-  {
-    id: "9",
-    title: "Pride and Prejudice",
-    author: "Jane Austen",
-    description:
-      "A romantic novel of manners that follows the character development of Elizabeth Bennet as she learns about the repercussions of hasty judgments.",
-    price: 9.99,
-    imageUrl: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/9.jpg-hqDv7ENJyvR3m1jT5yCYr6CAdYdWfr.jpeg",
-    category: "Fiction",
-    stock: 24,
-    isbn: "9780141439518",
-    publishedDate: new Date("1813-01-28"),
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-  {
-    id: "10",
-    title: "The Kite Runner",
-    author: "Khaled Hosseini",
-    description:
-      "A moving story of an unlikely friendship between a wealthy boy and the son of his father's servant, set against the backdrop of tumultuous events in Afghanistan.",
-    price: 13.5,
-    imageUrl: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/10.jpg-d5itQkcyvLKiMY6AhMEzpD93GZ6eP0.jpeg",
-    category: "Fiction",
-    stock: 19,
-    isbn: "9781594631931",
-    publishedDate: new Date("2003-05-29"),
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-  {
-    id: "11",
-    title: "The Night Circus",
-    author: "Erin Morgenstern",
-    description:
-      "A competition between two young magicians becomes a game of hearts and minds in this enchanting and imaginative novel set in a mysterious circus that only appears at night.",
-    price: 15.5,
-    imageUrl: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/11.jpg-eH16eRLEjBhsuVJRfgsdc7bhCJ8YDG.jpeg",
-    category: "Fiction",
-    stock: 16,
-    isbn: "9780307744432",
-    publishedDate: new Date("2011-09-13"),
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-  {
-    id: "12",
-    title: "The Shadow of the Wind",
-    author: "Carlos Ruiz Zafón",
-    description:
-      "A literary thriller set in post-war Barcelona about a young boy who discovers a mysterious book that leads him into a labyrinth of secrets and buried mysteries.",
-    price: 16.99,
-    imageUrl: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/12.jpg-81iW40ieCitGiq7zCWQfNiNqD0r3LC.jpeg",
-    category: "Fiction",
-    stock: 14,
-    isbn: "9780143034902",
-    publishedDate: new Date("2001-04-01"),
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-  {
-    id: "13",
-    title: "Normal People",
-    author: "Sally Rooney",
-    description:
-      "A complex coming-of-age story that follows the relationship between two teenagers as they navigate the complexities of social class, intimacy, and young adulthood.",
-    price: 12.99,
-    imageUrl: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/13.jpg-5ONILa8jJQXRu1lwAB0KupEcin7w1J.jpeg",
-    category: "Fiction",
-    stock: 22,
-    isbn: "9781984822178",
-    publishedDate: new Date("2018-08-28"),
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-  // Education Books
-  {
-    id: "14",
-    title: "Mindset: The New Psychology of Success",
-    author: "Carol S. Dweck",
-    description:
-      "A groundbreaking book that shows how success in school, work, sports, the arts, and almost every area of human endeavor can be dramatically influenced by how we think about our talents and abilities.",
-    price: 17.99,
-    imageUrl: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/14.jpg-8Ylo9mypYphNdL39Vrso63zLXvgN1f.jpeg",
-    category: "Education",
-    stock: 28,
-    isbn: "9780345472328",
-    publishedDate: new Date("2006-02-28"),
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-  {
-    id: "15",
-    title: "Make It Stick: The Science of Successful Learning",
-    author: "Peter C. Brown, Henry L. Roediger III, Mark A. McDaniel",
-    description:
-      "Drawing on cognitive psychology and other fields, this book offers techniques for becoming more productive learners and cautions against study habits and practice routines that turn out to be counterproductive.",
-    price: 19.99,
-    imageUrl: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/15.jpg-BlLq7IrL3sL0WN1ucTsf9FiqROGw3O.jpeg",
-    category: "Education",
-    stock: 15,
-    isbn: "9780674729018",
-    publishedDate: new Date("2014-04-14"),
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-  {
-    id: "16",
-    title: "Pedagogy of the Oppressed",
-    author: "Paulo Freire",
-    description:
-      "A foundational text in critical pedagogy that examines the relationship between the colonizer and the colonized, and proposes a new, more equitable relationship between teacher and student.",
-    price: 14.95,
-    imageUrl: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/16.jpg-yCTaFHzFD8Vh6VlzFmbUuYGlrlhLZi.jpeg",
-    category: "Education",
-    stock: 12,
-    isbn: "9780826412768",
-    publishedDate: new Date("1968-01-01"),
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-  {
-    id: "17",
-    title: "How Children Succeed",
-    author: "Paul Tough",
-    description:
-      "An examination of how character qualities like perseverance, curiosity, and self-control are more crucial to success than pure academic abilities.",
-    price: 15.99,
-    imageUrl: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/17.jpg-EEydlZ5P9alfvvFad1ZVo710QAC08D.jpeg",
-    category: "Education",
-    stock: 20,
-    isbn: "9780544104402",
-    publishedDate: new Date("2012-09-04"),
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-  {
-    id: "18",
-    title: "Why Don't Students Like School?",
-    author: "Daniel T. Willingham",
-    description:
-      "A cognitive scientist answers questions about how the mind works and what it means for the classroom, offering practical advice on how teachers can apply cognitive science principles to their day-to-day teaching.",
-    price: 18.5,
-    imageUrl: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/18.jpg-bwnDFreMPFVzukqOloIzj7YmFOczib.jpeg",
-    category: "Education",
-    stock: 17,
-    isbn: "9780470591963",
-    publishedDate: new Date("2009-03-16"),
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-  {
-    id: "19",
-    title: "Visible Learning",
-    author: "John Hattie",
-    description:
-      "A synthesis of more than 800 meta-analyses relating to achievement, this book presents the largest collection of evidence-based research into what actually works in schools to improve learning.",
-    price: 24.99,
-    imageUrl: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/19.jpg-egW9GF0WtbEGCINMNoTJrbpawXUNDJ.jpeg",
-    category: "Education",
-    stock: 10,
-    isbn: "9780415476188",
-    publishedDate: new Date("2008-11-19"),
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-  {
-    id: "20",
-    title: "Teaching to Transgress",
-    author: "bell hooks",
-    description:
-      "A series of essays that discusses how teachers can build learning communities that nurture the intellectual and spiritual growth of students while also challenging systems of domination.",
-    price: 16.95,
-    imageUrl: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/20.jpg-kwTw3jiIvCQN9qi75xtIwGmBxdr7pL.jpeg",
-    category: "Education",
-    stock: 14,
-    isbn: "9780415908085",
-    publishedDate: new Date("1994-09-14"),
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-  {
-    id: "21",
-    title: "The Element: How Finding Your Passion Changes Everything",
-    author: "Ken Robinson",
-    description:
-      "A look at the importance of finding your passion and how education systems often fail to nurture individual talents, with stories of high achievers who didn't fit into traditional education.",
-    price: 15.99,
-    imageUrl: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/21.jpg-uogUyPbIZaxWL5nJ1qkacvFXUNwPrY.jpeg",
-    category: "Education",
-    stock: 19,
-    isbn: "9780143116738",
-    publishedDate: new Date("2009-01-08"),
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-]
+const books: Book[] = []
 
 export const users: User[] = [
   {
@@ -487,13 +185,206 @@ const wishlists: WishlistItem[] = [
   },
 ]
 
-// Helper functions to simulate database operations
+// UPDATED: Fixed adaptProductToBook to handle missing data better and provide appropriate default values
+// Updated: Fix to handle nested product data structure from API response
+function adaptProductToBook(product: any): Book {
+  // Handle null/undefined product
+  if (!product) {
+    console.error("adaptProductToBook received null/undefined input");
+    return {
+      id: "0",
+      title: "Untitled Book",
+      author: "Unknown Author",
+      description: "",
+      price: 0,
+      imageUrl: "https://via.placeholder.com/300x400",
+      category: "Uncategorized",
+      stock: 0,
+      isbn: "",
+      publish_year: 0,
+    };
+  }
+  
+  // Log the raw product data for debugging
+  console.log("Raw product data:", JSON.stringify(product));
+
+  // Check if the data is nested inside a 'product' property
+  const productData = product.product || product;
+  
+  // Get base site URL for image paths
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || '';
+  
+  // Determine image URL with fallbacks
+  let imageUrl = productData.image || productData.thumbnail || productData.imageUrl;
+  
+  // Adjust image URL if needed (when it's a relative path)
+  if (imageUrl) {
+    // If the path already starts with 'http' or '//' it's likely a full URL, leave it as is
+    if (!imageUrl.startsWith('http') && !imageUrl.startsWith('//')) {
+      // Remove any double slashes that might occur when concatenating
+      if (imageUrl.startsWith('/') && siteUrl.endsWith('/')) {
+        imageUrl = `${siteUrl}${imageUrl.slice(1)}`;
+      } else if (!imageUrl.startsWith('/') && !siteUrl.endsWith('/')) {
+        imageUrl = `${siteUrl}/${imageUrl}`;
+      } else {
+        imageUrl = `${siteUrl}${imageUrl}`;
+      }
+    }
+  } else {
+    // Default placeholder image if no image is available
+    imageUrl = "https://via.placeholder.com/300x400?text=No+Image";
+  }
+  
+  // Parse price safely
+  let price = 0;
+  try {
+    if (productData.price) {
+      price = parseFloat(productData.price);
+      if (isNaN(price)) price = 0;
+    }
+  } catch (error) {
+    console.error("Error parsing price:", error);
+    price = 0;
+  }
+  
+  // Parse stock/quantity safely
+  let stock = 0;
+  try {
+    if (productData.stock !== undefined && productData.stock !== null) {
+      stock = parseInt(productData.stock);
+      if (isNaN(stock)) stock = 0;
+    } else if (productData.quantity !== undefined && productData.quantity !== null) {
+      stock = parseInt(productData.quantity);
+      if (isNaN(stock)) stock = 0;
+    }
+  } catch (error) {
+    console.error("Error parsing stock/quantity:", error);
+    stock = 0;
+  }
+  
+  // Get category info - first try nested category, then category_name, then fallback
+  let categoryInfo = productData.category?.name || product.category_name || productData.category || "Uncategorized";
+  
+  return {
+    id: productData.id || "0",
+    title: productData.name || productData.title || "Untitled Book",
+    author: productData.author || "Unknown Author",
+    description: productData.description || productData.detail || "",
+    price: price,
+    imageUrl: imageUrl || "https://via.placeholder.com/300x400",
+    category: categoryInfo,
+    category_id: productData.category_id || productData.category?.id || null,
+    stock: stock,
+    isbn: productData.isbn || "",
+    publish_year: productData.publish_year || 0,
+    createdAt: productData.createdAt || (productData.created_at ? new Date(productData.created_at) : new Date()),
+    updatedAt: productData.updatedAt || (productData.updated_at ? new Date(productData.updated_at) : new Date()),
+  };
+}
+
+// UPDATED: Enhanced adaptCategoryToCategory function to handle different API response structures and missing data
+function adaptCategoryToCategory(category: any): Category {
+  // Handle null/undefined input
+  if (!category) {
+    console.error("adaptCategoryToCategory received null/undefined input");
+    return {
+      id: "0",
+      name: "Unknown Category",
+      description: "No category data received"
+    };
+  }
+
+  // Get base site URL for image paths
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || '';
+  
+  // Log the received category structure for debugging
+  console.log("Adapting category structure:", JSON.stringify(category));
+  
+  // Determine image URL
+  let imageUrl = category.image;
+  
+  // Adjust image URL if needed (when it's a relative path)
+  if (imageUrl) {
+    // If the path already starts with 'http' or '//' it's likely a full URL, leave it as is
+    if (!imageUrl.startsWith('http') && !imageUrl.startsWith('//')) {
+      // Remove any double slashes that might occur when concatenating
+      if (imageUrl.startsWith('/') && siteUrl.endsWith('/')) {
+        imageUrl = `${siteUrl}${imageUrl.slice(1)}`;
+      } else if (!imageUrl.startsWith('/') && !siteUrl.endsWith('/')) {
+        imageUrl = `${siteUrl}/${imageUrl}`;
+      } else {
+        imageUrl = `${siteUrl}${imageUrl}`;
+      }
+    }
+  }
+  
+  // Ensure we have a valid name property
+  const name = category.name || category.category_name || "Unknown Category";
+  
+  return {
+    id: category.id || "0",
+    name: name,
+    description: category.description || "",
+    image: imageUrl || "",
+    createdAt: category.createdAt || (category.created_at ? new Date(category.created_at) : new Date()),
+    updatedAt: category.updatedAt || (category.updated_at ? new Date(category.updated_at) : new Date()),
+  };
+}
+
 export async function getBooks(): Promise<Book[]> {
-  return books
+  try {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+    const response = await fetch(`${apiUrl}/get/products`);
+    
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status}`);
+    }
+    
+    const result = await response.json();
+    
+    // Handle different possible API response structures
+    let products;
+    if (Array.isArray(result)) {
+      // If the response is already an array
+      products = result;
+    } else if (result.products && Array.isArray(result.products)) {
+      // If products are nested inside 'products' property
+      products = result.products;
+    } else if (typeof result === 'object' && result !== null) {
+      // If it's some other object structure, try to convert it to an array
+      // This handles cases where the API returns {0: product1, 1: product2, ...}
+      products = Object.values(result);
+    } else {
+      // Fallback to empty array if we can't determine the structure
+      products = [];
+    }
+    
+    return products.map(adaptProductToBook);
+  } catch (error) {
+    console.error("Error fetching books:", error);
+    // Fallback to mock data in case of API failure
+    return books;
+  }
 }
 
 export async function getBookById(id: string): Promise<Book | undefined> {
-  return books.find((book) => book.id === id)
+  try {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+    const response = await fetch(`${apiUrl}/get/products/${id}`);
+    
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status}`);
+    }
+    
+    const result = await response.json();
+    console.log(`Raw API response for book ID ${id}:`, JSON.stringify(result));
+    
+    return adaptProductToBook(result);
+  } catch (error) {
+    console.error(`Error fetching book with id ${id}:`, error);
+    // Fallback to mock data in case of API failure
+    return books.find((book) => book.id === id);
+  }
 }
 
 export async function getBooksByCategory(category: string): Promise<Book[]> {
@@ -504,9 +395,9 @@ export async function searchBooks(query: string): Promise<Book[]> {
   const lowerQuery = query.toLowerCase()
   return books.filter(
     (book) =>
-      book.title.toLowerCase().includes(lowerQuery) ||
-      book.author.toLowerCase().includes(lowerQuery) ||
-      book.description.toLowerCase().includes(lowerQuery),
+      (book.title?.toLowerCase()?.includes(lowerQuery) || false) ||
+      (book.author?.toLowerCase()?.includes(lowerQuery) || false) ||
+      (book.description?.toLowerCase()?.includes(lowerQuery) || false),
   )
 }
 
@@ -530,11 +421,104 @@ export async function getAllUsers(): Promise<User[]> {
 
 // Categories
 export async function getAllCategories(): Promise<Category[]> {
-  return categories
+  try {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+    const response = await fetch(`${apiUrl}/get/categories`);
+    
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status}`);
+    }
+    
+    const categories = await response.json();
+    return Array.isArray(categories) ? categories.map(adaptCategoryToCategory) : [];
+  } catch (error) {
+    console.error("Error fetching categories:", error);
+    // Return empty array or mock data as fallback
+    return [];
+  }
 }
 
 export async function getCategoryById(id: string): Promise<Category | undefined> {
-  return categories.find((category) => category.id === id)
+  // Return early if id is empty
+  if (!id || id === "") {
+    console.log("getCategoryById called with empty ID");
+    return {
+      id: "0",
+      name: "Uncategorized",
+      description: "Default category when no category ID is provided"
+    };
+  }
+
+  // Try up to 3 times to fetch the category
+  let attempts = 0;
+  const maxAttempts = 3;
+  
+  while (attempts < maxAttempts) {
+    attempts++;
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+      console.log(`Fetching category from: ${apiUrl}/get/categories/${id} (attempt ${attempts})`);
+      
+      const response = await fetch(`${apiUrl}/get/categories/${id}`, {
+        // Add cache: 'no-store' to prevent caching issues
+        cache: 'no-store',
+        headers: {
+          'Accept': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        console.error(`API error fetching category ${id}: Status ${response.status}`);
+        if (attempts < maxAttempts) {
+          console.log(`Retrying... (${attempts}/${maxAttempts})`);
+          await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second before retry
+          continue;
+        }
+        throw new Error(`API error: ${response.status}`);
+      }
+      
+      const category = await response.json();
+      console.log(`Raw category data for ID ${id}:`, JSON.stringify(category));
+      
+      if (!category) {
+        console.log(`No category data returned for ID ${id}`);
+        return {
+          id: id,
+          name: "Unknown Category",
+          description: "Category data could not be loaded"
+        };
+      }
+      
+      if (!category.name) {
+        console.log(`Category name missing for ID ${id}`);
+        return {
+          id: id,
+          name: "Unknown Category",
+          description: "Category name is missing"
+        };
+      }
+      
+      return adaptCategoryToCategory(category);
+    } catch (error) {
+      console.error(`Error fetching category with id ${id} (attempt ${attempts}/${maxAttempts}):`, error);
+      if (attempts >= maxAttempts) {
+        // Return a default category after all retries failed
+        return {
+          id: id,
+          name: "Unknown Category",
+          description: "Error loading category"
+        };
+      }
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second before retry
+    }
+  }
+  
+  // This should not be reached, but just in case
+  return {
+    id: id,
+    name: "Unknown Category",
+    description: "Failed to load after multiple attempts"
+  };
 }
 
 // Payments
@@ -573,6 +557,9 @@ export async function addBook(book: Omit<Book, "id" | "createdAt" | "updatedAt">
   const newBook: Book = {
     ...book,
     id: (books.length + 1).toString(),
+    title: book.title || "Untitled Book",
+    author: book.author || "Unknown Author",
+    description: book.description || "",
     createdAt: new Date(),
     updatedAt: new Date(),
   }
