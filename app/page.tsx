@@ -3,13 +3,13 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import Image from "next/image"
-import { getBooks } from "@/lib/data"
+import { getBooks, getAllCategories } from "@/lib/data"
 import { BookGrid } from "@/components/book-grid"
 import { Button } from "@/components/ui/button"
 import { ArrowRight, BookOpen, Sparkles, TrendingUp, Award, Users } from "lucide-react"
-import type { Book } from "@/lib/db-schema"
+import type { Book, Category } from "@/lib/db-schema"
 
-// Static data for categories and features
+// Static data for features
 const features = [
   {
     title: "Curated Selection",
@@ -28,63 +28,81 @@ const features = [
   },
 ]
 
+// Helper function to get icon for a category
+const getCategoryIcon = (categoryName: string) => {
+  switch (categoryName.toLowerCase()) {
+    case "fantasy":
+      return <Sparkles className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
+    default:
+      return <BookOpen className="h-6 w-6 text-primary" />
+  }
+}
+
+// Helper function to get color for a category
+const getCategoryColor = (index: number) => {
+  const colors = [
+    {
+      color: "bg-blue-50 dark:bg-blue-900/20",
+      borderColor: "border-blue-200 dark:border-blue-800",
+    },
+    {
+      color: "bg-emerald-50 dark:bg-emerald-900/20",
+      borderColor: "border-emerald-200 dark:border-emerald-800",
+    },
+    {
+      color: "bg-amber-50 dark:bg-amber-900/20",
+      borderColor: "border-amber-200 dark:border-amber-800",
+    },
+    {
+      color: "bg-red-50 dark:bg-red-900/20",
+      borderColor: "border-red-200 dark:border-red-800",
+    },
+  ]
+  return colors[index % colors.length]
+}
+
 export default function Home() {
   const [books, setBooks] = useState<Book[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [categories, setCategories] = useState<any[]>([])
+  const [apiCategories, setApiCategories] = useState<Category[]>([])
+  const [displayCategories, setDisplayCategories] = useState<any[]>([])
   const [featuredBooks, setFeaturedBooks] = useState<Book[]>([])
 
   useEffect(() => {
     async function loadData() {
       try {
+        setIsLoading(true)
+        
+        // Fetch books from the API
         const allBooks = await getBooks()
         setBooks(allBooks)
 
-        // Set featured books
-        setFeaturedBooks(allBooks.slice(0, 4))
+        // Set featured books (exactly 5 books)
+        setFeaturedBooks(allBooks.slice(0, 5))
 
-        // Filter books by category
-        const fictionBooks = allBooks.filter((book) => book.category === "Fiction")
-        const fantasyBooks = allBooks.filter((book) => book.category === "Fantasy")
-        const educationBooks = allBooks.filter((book) => book.category === "Education")
-        const thrillerBooks = allBooks.filter((book) => book.category === "Thriller")
+        // Fetch categories from the API
+        const categories = await getAllCategories()
+        setApiCategories(categories)
 
-        // Set categories
-        setCategories([
-          {
-            name: "Fiction",
-            description: "Immerse yourself in captivating stories and rich narratives",
-            count: fictionBooks.length,
-            icon: <BookOpen className="h-6 w-6 text-primary" />,
-            color: "bg-blue-50 dark:bg-blue-900/20",
-            borderColor: "border-blue-200 dark:border-blue-800",
-          },
-          {
-            name: "Fantasy",
-            description: "Explore magical worlds and extraordinary adventures",
-            count: fantasyBooks.length,
-            icon: <Sparkles className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />,
-            color: "bg-emerald-50 dark:bg-emerald-900/20",
-            borderColor: "border-emerald-200 dark:border-emerald-800",
-          },
-          {
-            name: "Education",
-            description: "Expand your knowledge and develop new skills",
-            count: educationBooks.length,
-            icon: <BookOpen className="h-6 w-6 text-amber-600 dark:text-amber-400" />,
-            color: "bg-amber-50 dark:bg-amber-900/20",
-            borderColor: "border-amber-200 dark:border-amber-800",
-          },
-          {
-            name: "Thriller",
-            description: "Experience suspense and excitement with every page",
-            count: thrillerBooks.length,
-            icon: <BookOpen className="h-6 w-6 text-red-600 dark:text-red-400" />,
-            color: "bg-red-50 dark:bg-red-900/20",
-            borderColor: "border-red-200 dark:border-red-800",
-          },
-        ])
+        // Transform API categories into display format
+        const formattedCategories = categories.map((category, index) => {
+          // Count books in this category
+          const categoryBooks = allBooks.filter((book) => book.category === category.name)
+          
+          const colors = getCategoryColor(index)
+          
+          return {
+            name: category.name,
+            description: `Explore our collection of ${category.name} books`,
+            count: categoryBooks.length,
+            icon: getCategoryIcon(category.name),
+            color: colors.color,
+            borderColor: colors.borderColor,
+            image: category.image,
+          }
+        })
 
+        setDisplayCategories(formattedCategories.slice(0, 4)) // Display up to 4 categories
         setIsLoading(false)
       } catch (error) {
         console.error("Error loading data:", error)
@@ -192,8 +210,8 @@ export default function Home() {
         <div className="container">
           <div className="flex flex-col gap-6">
             <div className="flex flex-col gap-2">
-              <h2 className="section-title">Featured Books</h2>
-              <p className="text-muted-foreground">Discover our handpicked selection of must-read books</p>
+              <h2 className="section-title">Top 5 Featured Books</h2>
+              <p className="text-muted-foreground">Discover our handpicked selection of 5 must-read books</p>
             </div>
             <div className="flex items-center justify-between">
               <div className="h-px flex-1 bg-border"></div>
@@ -218,13 +236,23 @@ export default function Home() {
               <p className="text-muted-foreground">Explore our extensive collection by category</p>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {categories.map((category) => (
+              {displayCategories.map((category) => (
                 <Link
                   key={category.name}
                   href={`/books?category=${category.name}`}
                   className={`group relative overflow-hidden rounded-xl border ${category.borderColor} ${category.color} shadow-sm hover:shadow-md transition-all duration-300 p-6`}
                 >
-                  <div className="flex flex-col h-full min-h-[180px] justify-between">
+                  {category.image && (
+                    <div className="absolute inset-0 opacity-10">
+                      <Image
+                        src={category.image}
+                        alt={category.name}
+                        fill
+                        className="object-cover"
+                      />
+                    </div>
+                  )}
+                  <div className="flex flex-col h-full min-h-[180px] justify-between relative z-10">
                     <div>
                       <div className="flex items-center gap-2 mb-3">
                         <div className="p-2 rounded-full bg-white/90 dark:bg-gray-800/90">{category.icon}</div>

@@ -2,6 +2,7 @@
 
 import { cookies } from "next/headers"
 import { redirect } from "next/navigation"
+// Removed toast import since it's client-side only
 // Updated auth.ts - Changed to use API for authentication instead of local authentication
 // Improved error handling to show detailed error messages
 // Added additional debugging for API connections
@@ -41,6 +42,7 @@ export async function login(formData: FormData) {
     }
 
     const data = await response.json();
+    console.log("Login API response:", data); // Log the complete API response
 
     if (!response.ok) {
       // Return the specific error message from the API
@@ -57,17 +59,27 @@ export async function login(formData: FormData) {
       return { error: 'Login failed: ' + (response.statusText || 'Unknown error') };
     }
 
+    // Ensure we have a valid user ID
+    if (!data.id) {
+      console.error("API response missing user ID:", data);
+      return { error: 'Login failed: User ID missing from response' };
+    }
+
     // Store user data in cookie
     const cookieStore = await cookies();
+    const userData = {
+      id: data.id, // Ensure ID is explicitly included
+      name: data.name,
+      email: email,
+      role: data.role || 'user',
+      token: data.token
+    };
+    
+    console.log("Storing user data in cookie:", userData);
+    
     cookieStore.set(
       "user",
-      JSON.stringify({
-        id: data.id || 'unknown',
-        name: data.name,
-        email: email,
-        role: data.role,
-        token: data.token
-      }),
+      JSON.stringify(userData),
       {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
@@ -76,7 +88,7 @@ export async function login(formData: FormData) {
       },
     )
 
-    return { success: true, role: data.role }
+    return { success: true, role: data.role, userId: data.id }
   } catch (error) {
     console.error("Login error:", error);
     // Return more specific error message
@@ -164,14 +176,32 @@ export async function signup(formData: FormData) {
 
 // Fix the getSession function to avoid redirects
 export async function getSession() {
-  const cookieStore = await cookies();
-  const userCookie = cookieStore.get("user")?.value
-  if (!userCookie) return null
-
   try {
-    return JSON.parse(userCookie)
+    const cookieStore = await cookies();
+    const userCookie = cookieStore.get("user")?.value
+    
+    if (!userCookie) {
+      console.log('No user cookie found');
+      return null;
+    }
+
+    try {
+      const sessionData = JSON.parse(userCookie);
+      console.log('Session data retrieved:', sessionData);
+      
+      // Ensure sessionData has an id property
+      if (!sessionData.id && sessionData.user && sessionData.user.id) {
+        sessionData.id = sessionData.user.id;
+      }
+      
+      return sessionData;
+    } catch (error) {
+      console.error('Error parsing user cookie:', error);
+      return null;
+    }
   } catch (error) {
-    return null
+    console.error('Error getting session:', error);
+    return null;
   }
 }
 
@@ -203,4 +233,7 @@ export async function requireAdmin() {
   }
   return session
 }
+
+// Removed client-side functions checkAuthentication and ensureAuth
+// These have been moved to auth-client.ts
 

@@ -7,6 +7,7 @@ import { SiteHeader } from "@/components/site-header"
 import { SiteFooter } from "@/components/site-footer"
 import { Chatbot } from "@/components/chatbot"
 import ErrorBoundary from "@/components/error-boundary"
+import { Toaster } from "@/components/ui/toaster"
 
 // Font configuration with display swap for better performance
 const inter = Inter({
@@ -77,6 +78,7 @@ export default function RootLayout({
             </ErrorBoundary>
             <SiteFooter />
             <Chatbot />
+            <Toaster />
           </div>
         </ThemeProvider>
       </body>

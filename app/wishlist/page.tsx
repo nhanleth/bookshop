@@ -7,9 +7,20 @@ import { useWishlistStore } from "@/lib/wishlist"
 import { Button } from "@/components/ui/button"
 import { useCartStore } from "@/lib/cart"
 import { Heart, ShoppingCart, Trash2, ArrowRight } from "lucide-react"
+import { CartItem } from "@/lib/db-schema"
+
+// Define the wishlist item type
+interface WishlistItem {
+  id: string
+  title: string
+  author: string
+  price: number
+  imageUrl: string
+}
 
 export default function WishlistPage() {
   const [mounted, setMounted] = useState(false)
+  const [loadingItems, setLoadingItems] = useState<Record<string, boolean>>({})
   const { items, removeFromWishlist, clearWishlist } = useWishlistStore()
   const { addToCart } = useCartStore()
 
@@ -18,14 +29,22 @@ export default function WishlistPage() {
     setMounted(true)
   }, [])
 
-  const handleAddToCart = (item) => {
-    addToCart({
-      bookId: item.id,
-      title: item.title,
-      author: item.author,
-      price: item.price,
-      imageUrl: item.imageUrl,
-    })
+  const handleAddToCart = async (item: WishlistItem) => {
+    try {
+      setLoadingItems(prev => ({ ...prev, [item.id]: true }))
+      
+      await addToCart({
+        bookId: item.id,
+        title: item.title,
+        author: item.author,
+        price: item.price,
+        imageUrl: item.imageUrl,
+      })
+    } catch (error) {
+      console.error('Error adding to cart:', error)
+    } finally {
+      setLoadingItems(prev => ({ ...prev, [item.id]: false }))
+    }
   }
 
   if (!mounted) {
@@ -81,13 +100,17 @@ export default function WishlistPage() {
               </div>
 
               <div className="flex items-center gap-2 mt-auto">
-                <Button size="sm" onClick={() => handleAddToCart(item)}>
+                <Button 
+                  size="sm" 
+                  onClick={() => handleAddToCart(item)} 
+                  disabled={loadingItems[item.id]}
+                >
                   <ShoppingCart className="h-4 w-4 mr-2" />
-                  Add to Cart
+                  {loadingItems[item.id] ? "Đang thêm..." : "Thêm vào giỏ hàng"}
                 </Button>
                 <Button variant="outline" size="sm" onClick={() => removeFromWishlist(item.id)}>
                   <Trash2 className="h-4 w-4 mr-2" />
-                  Remove
+                  Xóa
                 </Button>
               </div>
             </div>
