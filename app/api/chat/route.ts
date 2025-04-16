@@ -1,52 +1,19 @@
-import { NextResponse } from "next/server"
-import { getChatbotResponse } from "@/lib/chatbot"
-import { getFallbackResponse } from "@/lib/chatbot-fallback"
+import { NextResponse } from "next/server";
+import { getChatbotResponse } from "@/lib/chatbot";
 
-export async function POST(request: Request) {
+export async function POST(req: Request) {
   try {
-    // Set a timeout for the entire request
-    const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 15000) // 15 second timeout
+    const { userMessage } = await req.json();
+    const result = await getChatbotResponse(userMessage);
 
-    const { message } = await request.json()
-
-    if (!message || typeof message !== "string") {
-      return NextResponse.json({ error: "Invalid request. Message is required." }, { status: 400 })
-    }
-
-    try {
-      // Try to get the AI response with the abort signal
-      const response = await getChatbotResponse(message)
-      clearTimeout(timeoutId)
-
-      return NextResponse.json(response)
-    } catch (error) {
-      console.error("Error in chat API:", error)
-
-      // If the request was aborted due to timeout, use fallback
-      if (error instanceof Error && error.name === "AbortError") {
-        const fallbackResponse = await getFallbackResponse(message)
-        return NextResponse.json({
-          response: fallbackResponse,
-          fallback: true,
-        })
-      }
-
-      // For other errors, also use fallback
-      const fallbackResponse = await getFallbackResponse(message)
-      return NextResponse.json({
-        response: fallbackResponse,
-        fallback: true,
-      })
-    }
+    return NextResponse.json({ response: result.response });
   } catch (error) {
-    console.error("Unhandled error in chat API:", error)
+    console.error("Chat API Error:", error);
     return NextResponse.json(
       {
-        error: "An unexpected error occurred. Please try again later.",
+        error: "Xin lỗi, hiện chatbot đang gặp sự cố. Vui lòng thử lại sau.",
       },
-      { status: 500 },
-    )
+      { status: 500 }
+    );
   }
 }
-
