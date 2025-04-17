@@ -95,7 +95,7 @@ Use this format for each book:
     <a href="/books/BOOK_ID" style="color: #3b82f6; text-decoration: none;">BOOK_TITLE</a>
   </h3>
   <p style="margin: 0 0 5px 0; font-size: 0.9rem; color: #4b5563;">by BOOK_AUTHOR</p>
-  <p style="margin: 0 0 8px 0; font-size: 0.9rem; color: #4b5563;">BOOK_PRICE VNĐ | BOOK_GENRE | BOOK_STOCK</p>
+  <p style="margin: 0 0 8px 0; font-size: 0.9rem; color: #4b5563;">BOOK_PRICE USD | BOOK_GENRE | BOOK_STOCK</p>
   <p style="margin: 0; font-size: 0.9rem; color: #4b5563;">BOOK_DESCRIPTION</p>
 </div>
 
